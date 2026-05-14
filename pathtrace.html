@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PathTrace - Record & Retrace</title>
+  <style>
+    body { margin:0; font-family:Arial,sans-serif; background:#000; color:white; overflow:hidden; }
+    video { width:100%; height:100vh; object-fit:cover; }
+    .controls { position:fixed; bottom:20px; left:0; right:0; text-align:center; z-index:10; }
+    button { padding:15px 30px; margin:5px; font-size:18px; border:none; border-radius:8px; background:#0066ff; color:white; }
+    button:disabled { background:#555; }
+    #status { position:fixed; top:20px; left:0; right:0; text-align:center; color:yellow; }
+  </style>
+</head>
+<body>
+  <video id="video" autoplay playsinline></video>
+  <div id="status"></div>
+  
+  <div class="controls">
+    <button id="record">🎥 Start Recording Path</button>
+    <button id="stop" disabled>⏹️ Stop Recording</button>
+    <button id="follow" disabled>👣 Follow This Path</button>
+  </div>
+
+  <script>
+    const video = document.getElementById('video');
+    const status = document.getElementById('status');
+    let stream, recorder, chunks = [];
+
+    // Get camera
+    navigator.mediaDevices.getUserMedia({ 
+      video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } } 
+    }).then(s => {
+      stream = s;
+      video.srcObject = s;
+    }).catch(err => {
+      status.textContent = 'Camera access denied or unavailable';
+    });
+
+    document.getElementById('record').onclick = () => {
+      chunks = [];
+      recorder = new MediaRecorder(stream);
+      recorder.ondataavailable = e => chunks.push(e.data);
+      recorder.onstop = saveVideo;
+      recorder.start(500); // chunks every 0.5s
+      document.getElementById('record').disabled = true;
+      document.getElementById('stop').disabled = false;
+      status.textContent = 'Recording path... Walk normally';
+    };
+
+    document.getElementById('stop').onclick = () => {
+      recorder.stop();
+      document.getElementById('stop').disabled = true;
+    };
+
+    function saveVideo() {
+      const blob = new Blob(chunks, { type: 'video/mp4' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'pathtrace-' + Date.now() + '.mp4';
+      a.click();
+      status.textContent = 'Video saved! In full app this uploads automatically.';
+      document.getElementById('follow').disabled = false;
+    }
+
+    document.getElementById('follow').onclick = () => {
+      status.textContent = 'Following mode active - Match the recorded view!';
+      alert('In the full React Native version, this would show live guidance with arrows and match percentage.');
+    };
+  </script>
+</body>
+</html>
